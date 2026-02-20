@@ -1,0 +1,44 @@
+syntax = "proto3";
+package daemon;
+option go_package = "github.com/lancekrogers/agent-coordinator-ethden-2026/pkg/daemon/pb";
+
+service DaemonService {
+  rpc Register(RegisterReq) returns (RegisterResp);
+  rpc Execute(ExecuteReq) returns (ExecuteResp);
+  rpc Heartbeat(HeartbeatReq) returns (HeartbeatResp);
+}
+
+message RegisterReq {
+  string agent_name = 1;
+  string agent_type = 2;
+  repeated string capabilities = 3;
+  string hedera_account_id = 4;
+}
+
+message RegisterResp {
+  string agent_id = 1;
+  string session_id = 2;
+  int64 registered_at_unix = 3;
+}
+
+message ExecuteReq {
+  string task_id = 1;
+  string task_type = 2;
+  bytes payload = 3;
+  int64 timeout_ms = 4;
+}
+
+message ExecuteResp {
+  string task_id = 1;
+  string status = 2;
+  bytes result = 3;
+  int64 duration_ms = 4;
+}
+
+message HeartbeatReq {
+  string agent_id = 1;
+  string session_id = 2;
+  int64 timestamp_unix = 3;
+}
+
+message HeartbeatResp {}

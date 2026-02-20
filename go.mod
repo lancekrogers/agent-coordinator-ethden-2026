@@ -2,7 +2,11 @@ module github.com/lancekrogers/agent-coordinator-ethden-2026
 
 go 1.24.0
 
-require github.com/hiero-ledger/hiero-sdk-go/v2 v2.75.0
+require (
+	github.com/hiero-ledger/hiero-sdk-go/v2 v2.75.0
+	google.golang.org/grpc v1.79.1
+	google.golang.org/protobuf v1.36.11
+)
 
 require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.6 // indirect
@@ -20,7 +24,5 @@ require (
 	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda // indirect
-	google.golang.org/grpc v1.78.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 )
