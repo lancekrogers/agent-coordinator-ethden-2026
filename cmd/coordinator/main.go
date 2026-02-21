@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	hiero "github.com/hiero-ledger/hiero-sdk-go/v2/sdk"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/coordinator"
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/hedera/hcs"
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/hedera/hts"
+	"github.com/lancekrogers/agent-coordinator-ethden-2026/pkg/daemon"
 )
 
 func main() {
@@ -31,6 +33,10 @@ func main() {
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
+
+	// Connect to daemon runtime (optional — agent works standalone if unavailable).
+	daemonClient := connectDaemon(ctx, log, cfg.CoordinatorAccountID.String())
+	defer daemonClient.Close()
 
 	// Create Hedera client with coordinator credentials.
 	hederaClient := hiero.ClientForTestnet()
@@ -64,7 +70,7 @@ func main() {
 		AgentAccounts: agentAccounts,
 	})
 
-	// Start monitor and result handler in background.
+	// Start monitor, result handler, and daemon heartbeat in background.
 	go func() {
 		if err := monitor.Start(ctx); err != nil {
 			log.Error("monitor stopped", "error", err)
@@ -75,6 +81,7 @@ func main() {
 			log.Error("result handler stopped", "error", err)
 		}
 	}()
+	go daemonHeartbeatLoop(ctx, log, daemonClient)
 
 	// Build and execute integration plan.
 	plan := coordinator.IntegrationCyclePlan("inference-001", "defi-001")
@@ -94,4 +101,55 @@ func main() {
 	// Block until shutdown signal.
 	<-ctx.Done()
 	log.Info("coordinator shutting down")
+}
+
+func connectDaemon(ctx context.Context, log *slog.Logger, hederaAccountID string) daemon.DaemonClient {
+	daemonAddr := os.Getenv("DAEMON_ADDRESS")
+	if daemonAddr == "" {
+		daemonAddr = "localhost:50051"
+	}
+
+	daemonCfg := daemon.DefaultConfig()
+	daemonCfg.Address = daemonAddr
+
+	client, err := daemon.NewGRPCClient(ctx, daemonCfg)
+	if err != nil {
+		log.Warn("daemon connection failed, running standalone", "error", err)
+		return daemon.Noop()
+	}
+
+	resp, err := client.Register(ctx, daemon.RegisterRequest{
+		AgentName:       "coordinator",
+		AgentType:       "coordinator",
+		Capabilities:    []string{"hcs", "hts", "scheduling"},
+		HederaAccountID: hederaAccountID,
+	})
+	if err != nil {
+		log.Warn("daemon registration failed, running standalone", "error", err)
+		client.Close()
+		return daemon.Noop()
+	}
+
+	log.Info("registered with daemon",
+		"agent_id", resp.AgentID,
+		"session_id", resp.SessionID)
+	return client
+}
+
+func daemonHeartbeatLoop(ctx context.Context, log *slog.Logger, client daemon.DaemonClient) {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := client.Heartbeat(ctx, daemon.HeartbeatRequest{
+				Timestamp: time.Now(),
+			}); err != nil {
+				log.Warn("daemon heartbeat failed", "error", err)
+			}
+		}
+	}
 }
