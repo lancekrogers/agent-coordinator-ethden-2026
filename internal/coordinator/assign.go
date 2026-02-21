@@ -13,10 +13,17 @@ import (
 )
 
 // TaskAssignmentPayload is the payload for a task assignment message.
+// Fields are a superset: inference agents use ModelID/Input/MaxTokens,
+// defi agents use TaskType. Both use Priority.
 type TaskAssignmentPayload struct {
 	TaskID       string   `json:"task_id"`
 	TaskName     string   `json:"task_name"`
+	TaskType     string   `json:"task_type,omitempty"`
 	AgentID      string   `json:"agent_id"`
+	ModelID      string   `json:"model_id,omitempty"`
+	Input        string   `json:"input,omitempty"`
+	Priority     int      `json:"priority,omitempty"`
+	MaxTokens    int      `json:"max_tokens,omitempty"`
 	Dependencies []string `json:"dependencies,omitempty"`
 }
 
@@ -62,7 +69,7 @@ func (a *Assigner) AssignTasks(ctx context.Context, plan Plan) ([]string, error)
 				agentIdx++
 			}
 
-			if err := a.AssignTask(ctx, task.ID, agentID); err != nil {
+			if err := a.assignPlanTask(ctx, task, agentID); err != nil {
 				return assignedIDs, fmt.Errorf("assign tasks: task %s: %w", task.ID, err)
 			}
 
@@ -75,18 +82,29 @@ func (a *Assigner) AssignTasks(ctx context.Context, plan Plan) ([]string, error)
 
 // AssignTask assigns a single task to a specific agent via HCS.
 func (a *Assigner) AssignTask(ctx context.Context, taskID string, agentID string) error {
+	return a.assignPlanTask(ctx, PlanTask{ID: taskID}, agentID)
+}
+
+func (a *Assigner) assignPlanTask(ctx context.Context, task PlanTask, agentID string) error {
 	if err := ctx.Err(); err != nil {
-		return fmt.Errorf("assign task %s to %s: %w", taskID, agentID, err)
+		return fmt.Errorf("assign task %s to %s: %w", task.ID, agentID, err)
 	}
 
 	payload := TaskAssignmentPayload{
-		TaskID:  taskID,
-		AgentID: agentID,
+		TaskID:       task.ID,
+		TaskName:     task.Name,
+		TaskType:     task.TaskType,
+		AgentID:      agentID,
+		ModelID:      task.ModelID,
+		Input:        task.Input,
+		Priority:     task.Priority,
+		MaxTokens:    task.MaxTokens,
+		Dependencies: task.Dependencies,
 	}
 
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("assign task %s to %s: marshal payload: %w", taskID, agentID, err)
+		return fmt.Errorf("assign task %s to %s: marshal payload: %w", task.ID, agentID, err)
 	}
 
 	a.mu.Lock()
@@ -98,18 +116,18 @@ func (a *Assigner) AssignTask(ctx context.Context, taskID string, agentID string
 		Type:        hcs.MessageTypeTaskAssignment,
 		Sender:      "coordinator",
 		Recipient:   agentID,
-		TaskID:      taskID,
+		TaskID:      task.ID,
 		SequenceNum: seqNum,
 		Timestamp:   time.Now(),
 		Payload:     payloadBytes,
 	}
 
 	if err := a.publisher.Publish(ctx, a.topicID, env); err != nil {
-		return fmt.Errorf("assign task %s to %s: publish: %w", taskID, agentID, err)
+		return fmt.Errorf("assign task %s to %s: publish: %w", task.ID, agentID, err)
 	}
 
 	a.mu.Lock()
-	a.assignments[taskID] = agentID
+	a.assignments[task.ID] = agentID
 	a.mu.Unlock()
 
 	return nil

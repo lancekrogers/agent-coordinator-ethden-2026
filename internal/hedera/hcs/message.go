@@ -26,6 +26,9 @@ const (
 
 	// MessageTypePaymentSettled is sent after HTS payment is completed.
 	MessageTypePaymentSettled MessageType = "payment_settled"
+
+	// MessageTypePnLReport is sent by the DeFi agent with profit/loss data.
+	MessageTypePnLReport MessageType = "pnl_report"
 )
 
 // Envelope is the standard message format for all festival protocol messages

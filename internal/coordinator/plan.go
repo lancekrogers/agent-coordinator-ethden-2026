@@ -16,7 +16,12 @@ type PlanSequence struct {
 type PlanTask struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
+	TaskType      string   `json:"task_type,omitempty"`
 	AssignTo      string   `json:"assign_to,omitempty"`
+	ModelID       string   `json:"model_id,omitempty"`
+	Input         string   `json:"input,omitempty"`
+	Priority      int      `json:"priority,omitempty"`
+	MaxTokens     int      `json:"max_tokens,omitempty"`
 	PaymentAmount int64    `json:"payment_amount,omitempty"`
 	Dependencies  []string `json:"dependencies,omitempty"`
 }
