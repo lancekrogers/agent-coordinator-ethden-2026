@@ -45,11 +45,15 @@ This ensures inference outputs remain confidential on-chain while still being ve
 |-----------------|------|--------|
 | ERC-7857 iNFT mint | TBD | Awaiting testnet deployment |
 
+## Live Testnet Results (2026-02-21)
+
+The inference agent connected to 0G Chain RPC (`https://evmrpc-testnet.0g.ai`) successfully. The iNFT minting step is downstream of the compute step, which is currently blocked (no serving contract deployed). Once compute results are available, the minting pipeline is ready to execute.
+
 ## Evidence Gap
 
 No minting transactions have been executed on 0G Chain testnet. To complete evidence:
 
-1. Obtain 0G Chain testnet tokens.
-2. Deploy or reference an ERC-7857 contract on chain ID 16602.
-3. Execute a mint transaction with encrypted inference metadata.
-4. Capture the transaction hash and explorer link.
+1. Resolve the 0G Compute blocker (deploy serving contract with providers)
+2. Once inference results are available, the minting pipeline will execute automatically
+3. Capture the iNFT mint transaction hash on 0G Chain (chain ID 16602)
+4. Verify encrypted metadata via the explorer

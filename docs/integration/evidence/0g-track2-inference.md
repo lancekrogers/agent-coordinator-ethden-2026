@@ -43,11 +43,22 @@ The inference agent operates within the three-agent cycle as follows:
 | 0G Storage upload | TBD | Awaiting testnet deployment |
 | 0G DA audit publish | TBD | Awaiting testnet deployment |
 
+## Live Testnet Results (2026-02-21)
+
+The inference agent was deployed against live Hedera testnet and 0G Chain testnet:
+
+- **HCS transport:** Working — agent received `task-inference-01` from coordinator via HCS topic `0.0.7999404`
+- **0G Chain RPC:** Connected successfully to `https://evmrpc-testnet.0g.ai`
+- **Task processing:** Agent correctly unpacked the task payload (model=test-model, input="Analyze market sentiment for ETH")
+- **Failure reported:** Agent reported failure status back to coordinator via HCS topic `0.0.7999405`
+
+**Blocker:** 0G Compute execution failed because `ZG_SERVING_CONTRACT` is empty — no serving contract is deployed on the 0G testnet. The agent's on-chain query returns "no contract code at given address".
+
 ## Evidence Gap
 
-Testnet deployment has not been performed. To complete evidence for this track:
+To complete evidence for this track:
 
-1. Obtain 0G testnet tokens from faucet.
-2. Deploy inference agent against 0G testnet endpoints.
-3. Execute a full inference cycle and capture transaction hashes.
-4. Record explorer links for each transaction type.
+1. Deploy or locate an existing 0G Serving contract on testnet with registered providers
+2. Re-run the three-agent cycle with the serving contract configured
+3. Capture compute job submission, storage upload, DA publish, and iNFT mint transaction hashes
+4. Record explorer links for each transaction type

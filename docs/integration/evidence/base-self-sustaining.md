@@ -69,11 +69,29 @@ The agent reports its P&L back to the coordinator as part of the three-agent cyc
 | DEX swap (Uniswap v3) | TBD | Awaiting testnet deployment |
 | x402 payment | TBD | Awaiting testnet deployment |
 
+## Live Testnet Results (2026-02-21)
+
+The DeFi agent was deployed against live Hedera testnet and Base Sepolia:
+
+- **HCS transport:** Working — agent received `task-defi-01` from coordinator via HCS topic `0.0.7999404`
+- **Base Sepolia RPC:** Connected successfully to `https://sepolia.base.org`
+- **Identity:** Registration completed (ERC-8004 on Base Sepolia)
+- **Trading:** 2 trades executed during 117s test run (60s interval)
+- **Strategy signals:** Mean reversion sell signal at 71.4% confidence
+- **Result reported:** Completed status sent to coordinator via HCS (duration=346ms)
+- **Payment received:** Coordinator triggered 100 HTS token payment to defi-001
+
+**Partial blockers:**
+- DEX Router is set to zero address — trades execute against stub
+- Builder code not configured — ERC-8021 attribution disabled
+- x402 payment not demonstrated — no paywall-protected resource configured
+
 ## Evidence Gap
 
-No transactions have been executed on Base Sepolia. To complete evidence:
+To complete evidence for this track:
 
-1. Obtain Base Sepolia ETH from faucet.
-2. Deploy agent with Base Sepolia RPC configuration.
-3. Execute identity registration, at least one trade, and one x402 payment.
-4. Capture transaction hashes and demonstrate `IsSelfSustaining == true`.
+1. Deploy Uniswap V3 router on Base Sepolia or configure existing deployment address
+2. Register an ERC-8021 builder code
+3. Configure a paywall-protected resource for x402 demonstration
+4. Re-run agent and capture real DEX swap transaction hashes
+5. Demonstrate `IsSelfSustaining == true` with real P&L data
