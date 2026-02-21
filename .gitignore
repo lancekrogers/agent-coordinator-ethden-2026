@@ -1,11 +1,2 @@
-bin/
-dist/
-*.exe
-*.dll
-*.so
-*.dylib
 .env
-.env.local
-.DS_Store
-coverage.out
-coverage.html
+bin/
