@@ -80,6 +80,7 @@ func (rh *ResultHandler) Start(ctx context.Context) error {
 			rh.processMessage(ctx, msg)
 		case err, ok := <-errCh:
 			if !ok {
+				errCh = nil // prevent spin on closed channel
 				continue
 			}
 			rh.log.Warn("result handler subscription error", "error", err)
@@ -147,8 +148,27 @@ func (rh *ResultHandler) handleTaskResult(ctx context.Context, msg hcs.Envelope)
 	}
 }
 
+// PnLReportPayload is the payload agents send with P&L data.
+type PnLReportPayload struct {
+	AgentID          string  `json:"agent_id"`
+	NetPnL           float64 `json:"net_pnl"`
+	TradeCount       int     `json:"trade_count"`
+	IsSelfSustaining bool    `json:"is_self_sustaining"`
+	ActiveStrategy   string  `json:"active_strategy"`
+}
+
 func (rh *ResultHandler) handlePnLReport(msg hcs.Envelope) {
+	var report PnLReportPayload
+	if err := json.Unmarshal(msg.Payload, &report); err != nil {
+		rh.log.Warn("failed to unmarshal pnl report", "error", err)
+		return
+	}
+
 	rh.log.Info("pnl report received",
 		"sender", msg.Sender,
-		"payload_size", len(msg.Payload))
+		"agent_id", report.AgentID,
+		"net_pnl", report.NetPnL,
+		"trades", report.TradeCount,
+		"self_sustaining", report.IsSelfSustaining,
+		"strategy", report.ActiveStrategy)
 }

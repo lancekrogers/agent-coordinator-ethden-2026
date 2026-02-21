@@ -53,17 +53,13 @@ func (p *Payment) PayForTask(ctx context.Context, taskID string, agentID string,
 		return fmt.Errorf("pay for task %s to %s: amount must be positive, got %d", taskID, agentID, amount)
 	}
 
-	// Check for double-payment.
-	p.mu.RLock()
-	existing, alreadyTracked := p.payments[taskID]
-	p.mu.RUnlock()
-
-	if alreadyTracked && existing == PaymentProcessed {
-		return fmt.Errorf("pay for task %s to %s amount %d: already paid", taskID, agentID, amount)
-	}
-
-	// Mark as pending.
+	// Atomically check for double-payment and mark as pending.
 	p.mu.Lock()
+	existing := p.payments[taskID]
+	if existing == PaymentProcessed || existing == PaymentPending {
+		p.mu.Unlock()
+		return fmt.Errorf("pay for task %s to %s amount %d: already %s", taskID, agentID, amount, existing)
+	}
 	p.payments[taskID] = PaymentPending
 	p.mu.Unlock()
 

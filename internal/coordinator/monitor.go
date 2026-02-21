@@ -58,6 +58,7 @@ func (m *Monitor) Start(ctx context.Context) error {
 			m.processMessage(ctx, msg)
 		case _, ok := <-errCh:
 			if !ok {
+				errCh = nil // prevent spin on closed channel
 				continue
 			}
 		}

@@ -69,10 +69,16 @@ func Load() (*Env, error) {
 	if agent1 == "" {
 		return nil, fmt.Errorf("config: HEDERA_AGENT1_ACCOUNT_ID is required")
 	}
+	if _, err := hiero.AccountIDFromString(agent1); err != nil {
+		return nil, fmt.Errorf("config: parse HEDERA_AGENT1_ACCOUNT_ID: %w", err)
+	}
 
 	agent2 := os.Getenv("HEDERA_AGENT2_ACCOUNT_ID")
 	if agent2 == "" {
 		return nil, fmt.Errorf("config: HEDERA_AGENT2_ACCOUNT_ID is required")
+	}
+	if _, err := hiero.AccountIDFromString(agent2); err != nil {
+		return nil, fmt.Errorf("config: parse HEDERA_AGENT2_ACCOUNT_ID: %w", err)
 	}
 
 	cfg := coordinator.DefaultConfig()
