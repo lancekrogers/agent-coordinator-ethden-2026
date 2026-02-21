@@ -8,6 +8,7 @@ bin_dir     := "bin"
 cmd_path    := "./cmd/coordinator"
 
 mod test '.justfiles/test.just'
+mod hedera '.justfiles/hedera.just'
 
 @default:
     just --list --justfile {{source_file()}}
