@@ -1,0 +1,9 @@
+bin/
+.env
+.git
+.gitignore
+*.md
+justfile
+.justfiles/
+coverage.out
+coverage.html
