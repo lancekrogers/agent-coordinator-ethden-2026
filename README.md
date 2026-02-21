@@ -121,4 +121,4 @@ just hedera show-config    # Display Hedera env vars
 
 ## License
 
-Apache-2.0
+MIT
