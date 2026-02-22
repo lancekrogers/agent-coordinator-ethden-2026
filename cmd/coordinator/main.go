@@ -14,6 +14,7 @@ import (
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/coordinator"
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/hedera/hcs"
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/hedera/hts"
+	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/hedera/schedule"
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/pkg/daemon"
 )
 
@@ -48,6 +49,25 @@ func main() {
 
 	// Initialize HTS transfer service.
 	transferSvc := hts.NewTransferService(hederaClient)
+
+	// Schedule service — 4th Hedera native service.
+	scheduleSvc := schedule.NewScheduleService(hederaClient)
+
+	heartbeatCfg := schedule.DefaultHeartbeatConfig()
+	heartbeatCfg.AgentID = "coordinator"
+	heartbeatCfg.AccountID = cfg.CoordinatorAccountID
+
+	heartbeat, err := schedule.NewHeartbeat(hederaClient, scheduleSvc, heartbeatCfg)
+	if err != nil {
+		log.Error("failed to create heartbeat runner", "error", err)
+		os.Exit(1)
+	}
+	heartbeatErrs := heartbeat.Start(ctx)
+	go func() {
+		for err := range heartbeatErrs {
+			log.Warn("schedule heartbeat error", "error", err)
+		}
+	}()
 
 	// Create coordinator components.
 	agentIDs := []string{"inference-001", "defi-001"}
