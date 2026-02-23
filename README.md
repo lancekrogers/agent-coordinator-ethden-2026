@@ -187,7 +187,7 @@ The demo video shows the full autonomous economy cycle:
 - Two topics: Task Topic (coordinator -> agents) and Status Topic (agents -> coordinator)
 - All inter-agent communication flows through HCS with JSON-encoded payloads
 - Messages are immutable, ordered, and timestamped by the Hedera network
-- Topic lifecycle managed via `TopicCreateTransaction` with admin and submit keys
+- Topic lifecycle managed via `TopicCreateTransaction` (submit keys omitted on testnet, relying on account separation)
 
 **HTS (Hedera Token Service)**
 - Custom fungible token (`AGNT`) created via `TokenCreateTransaction`
@@ -199,6 +199,11 @@ The demo video shows the full autonomous economy cycle:
 - Three separate testnet accounts with distinct key pairs
 - Coordinator account serves as treasury and token administrator
 - Agent accounts have minimal permissions (HCS submit + HTS receive)
+
+**Schedule Service**
+- Wraps any Hedera transaction in a `ScheduleCreateTransaction` for deferred execution
+- Heartbeat mechanism sends periodic scheduled zero-value HBAR transfers as agent liveness proofs (configurable interval, default 30s)
+- Supports both immediate and delayed scheduling with consensus timestamps
 
 ## License
 
