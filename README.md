@@ -108,6 +108,9 @@ All inter-agent communication happens through HCS messages with JSON payloads. M
 | `heartbeat` | Agent -> Coordinator | Status | Liveness signal with agent metadata |
 | `quality_gate` | Coordinator -> Agent | Task | Quality check enforcement |
 | `payment_settled` | Coordinator -> Agent | Task | HTS payment confirmation with tx hash |
+| `risk_check_requested` | Coordinator -> CRE | Task | Requests CRE Risk Router evaluation before DeFi task assignment |
+| `risk_check_approved` | CRE -> Coordinator | Task | CRE approved trade with position/slippage constraints |
+| `risk_check_denied` | CRE -> Coordinator | Task | CRE denied trade with denial reason |
 
 Task state machine: `pending` -> `assigned` -> `in_progress` -> `review` -> `complete` -> `paid`
 
@@ -126,6 +129,7 @@ internal/
     hcs/                   HCS publisher, subscriber, topic lifecycle
     hts/                   HTS token creation and transfer
   integration/             E2E integration test helpers
+pkg/creclient/             CRE Risk Router HTTP client (risk evaluation before DeFi task assignment)
 pkg/daemon/                Shared daemon proto bindings
 proto/                     Protobuf definitions
 docs/integration/          Integration test evidence and logs
@@ -153,6 +157,7 @@ just hedera show-config    # Display Hedera env vars
 - **ResultHandler** -- processes `task_result` and `pnl_report` messages, triggers payment on completion
 - **Payment** -- executes HTS token transfers from the treasury to agent accounts, publishes settlement confirmations
 - **QualityGate** -- validates task completion criteria before authorizing payment
+- **CREClient** -- calls the CRE Risk Router to evaluate DeFi/trade tasks before assignment; denied tasks are blocked from execution
 
 All state management is thread-safe with `sync.RWMutex`. Context propagation ensures clean shutdown across all goroutines.
 
