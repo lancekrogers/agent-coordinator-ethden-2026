@@ -168,6 +168,29 @@ func TestDefaultConfig(t *testing.T) {
 	}
 }
 
+func TestIsDeFiTask(t *testing.T) {
+	tests := []struct {
+		taskType string
+		want     bool
+	}{
+		{"defi", true},
+		{"trade", true},
+		{"execute_trade", true},
+		{"inference", false},
+		{"", false},
+		{"DEFI", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.taskType, func(t *testing.T) {
+			task := PlanTask{TaskType: tt.taskType}
+			if got := isDeFiTask(task); got != tt.want {
+				t.Errorf("isDeFiTask(%q) = %v, want %v", tt.taskType, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name    string

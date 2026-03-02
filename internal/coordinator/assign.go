@@ -179,7 +179,7 @@ func (a *Assigner) AssignmentCount() int {
 
 // isDeFiTask returns true if the task involves DeFi trade execution.
 func isDeFiTask(task PlanTask) bool {
-	return task.TaskType == "defi" || task.TaskType == "trade"
+	return task.TaskType == "defi" || task.TaskType == "trade" || task.TaskType == "execute_trade"
 }
 
 // Compile-time interface compliance check.
