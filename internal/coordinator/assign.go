@@ -100,24 +100,32 @@ func (a *Assigner) assignPlanTask(ctx context.Context, task PlanTask, agentID st
 		return fmt.Errorf("assign task %s to %s: %w", task.ID, agentID, err)
 	}
 
-	// CRE risk check for DeFi tasks
+	// CRE risk check for DeFi tasks (fail-open: log and continue on CRE errors).
 	if isDeFiTask(task) && a.creClient != nil {
 		decision, err := a.creClient.EvaluateRisk(ctx, creclient.RiskRequest{
-			AgentID:   agentID,
-			TaskID:    task.ID,
-			Signal:    "buy",
-			RiskScore: task.Priority, // use priority as risk proxy
-			Timestamp: time.Now().Unix(),
+			AgentID:           agentID,
+			TaskID:            task.ID,
+			Signal:            "buy",
+			SignalConfidence:  0.85,           // default until inference populates this
+			RiskScore:         task.Priority,
+			MarketPair:        "ETH/USD",
+			RequestedPosition: 1000_000000,    // $1000 default in 6-decimal
+			Timestamp:         time.Now().Unix(),
 		})
 		if err != nil {
-			a.logger.Warn("CRE risk check failed, blocking task", "task_id", task.ID, "error", err)
-			return fmt.Errorf("assign task %s: CRE check failed: %w", task.ID, err)
+			// Fail-open: CRE unavailability should not block the entire assignment loop.
+			a.logger.Warn("CRE risk check failed, proceeding without risk gate",
+				"task_id", task.ID, "error", err)
+		} else if !decision.Approved {
+			a.logger.Info("CRE denied task, skipping assignment",
+				"task_id", task.ID, "reason", decision.Reason)
+			a.publishRiskEvent(ctx, task.ID, agentID, hcs.MessageTypeRiskCheckDenied, decision.Reason)
+			return nil // skip this task, don't abort the loop
+		} else {
+			a.logger.Info("CRE approved task",
+				"task_id", task.ID, "max_position", decision.MaxPositionUSD)
+			a.publishRiskEvent(ctx, task.ID, agentID, hcs.MessageTypeRiskCheckApproved, "approved")
 		}
-		if !decision.Approved {
-			a.logger.Info("CRE denied task", "task_id", task.ID, "reason", decision.Reason)
-			return fmt.Errorf("assign task %s: CRE denied: %s", task.ID, decision.Reason)
-		}
-		a.logger.Info("CRE approved task", "task_id", task.ID, "max_position", decision.MaxPositionUSD)
 	}
 
 	payload := TaskAssignmentPayload{
@@ -175,6 +183,28 @@ func (a *Assigner) AssignmentCount() int {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return len(a.assignments)
+}
+
+// publishRiskEvent emits an HCS message for CRE risk check lifecycle events.
+func (a *Assigner) publishRiskEvent(ctx context.Context, taskID, agentID string, msgType hcs.MessageType, reason string) {
+	a.mu.Lock()
+	a.seqNum++
+	seqNum := a.seqNum
+	a.mu.Unlock()
+
+	payload, _ := json.Marshal(map[string]string{"reason": reason})
+	env := hcs.Envelope{
+		Type:        msgType,
+		Sender:      "coordinator",
+		Recipient:   agentID,
+		TaskID:      taskID,
+		SequenceNum: seqNum,
+		Timestamp:   time.Now(),
+		Payload:     payload,
+	}
+	if err := a.publisher.Publish(ctx, a.topicID, env); err != nil {
+		a.logger.Warn("failed to publish risk event", "type", msgType, "task_id", taskID, "error", err)
+	}
 }
 
 // isDeFiTask returns true if the task involves DeFi trade execution.
