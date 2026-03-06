@@ -38,6 +38,9 @@ const (
 
 	// MessageTypeRiskCheckDenied is sent when CRE denies a trade.
 	MessageTypeRiskCheckDenied MessageType = "risk_check_denied"
+
+	// MessageTypeFestivalProgress is sent when the coordinator publishes fest-derived progress.
+	MessageTypeFestivalProgress MessageType = "festival_progress"
 )
 
 // Envelope is the standard message format for all festival protocol messages

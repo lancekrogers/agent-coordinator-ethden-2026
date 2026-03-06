@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/config"
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/coordinator"
+	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/festival"
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/hedera/hcs"
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/hedera/hts"
 	"github.com/lancekrogers/agent-coordinator-ethden-2026/internal/hedera/schedule"
@@ -71,7 +74,9 @@ func main() {
 	}()
 
 	// Create coordinator components.
-	agentIDs := []string{"inference-001", "defi-001"}
+	inferenceAgentID := "inference-001"
+	defiAgentID := "defi-001"
+	agentIDs := []string{inferenceAgentID, defiAgentID}
 	assigner := coordinator.NewAssigner(publisher, cfg.Coordinator.TaskTopicID, agentIDs)
 
 	// Wire CRE Risk Router client (optional — skipped if CRE_ENDPOINT not set).
@@ -114,12 +119,70 @@ func main() {
 	}()
 	go daemonHeartbeatLoop(ctx, log, daemonClient)
 
-	// Build and execute integration plan.
-	plan := coordinator.IntegrationCyclePlan("inference-001", "defi-001")
+	// Build runtime fest adapter and derive an execution plan.
+	festReader := festival.NewReader(festival.ReaderConfig{
+		RootDir:        os.Getenv("FEST_ROOT_DIR"),
+		Selector:       os.Getenv("FEST_SELECTOR"),
+		AllowCompleted: envBool("FEST_ALLOW_COMPLETED", false),
+		CommandTimeout: envDurationSeconds("FEST_COMMAND_TIMEOUT_SECONDS", 8*time.Second),
+	}, log)
+	festRuntime := coordinator.NewFestRuntime(
+		festReader,
+		inferenceAgentID,
+		defiAgentID,
+		envInt("FEST_STALE_AFTER_SECONDS", 30),
+		log,
+	)
+
+	allowSynthetic := envBool("FEST_FALLBACK_ALLOW_SYNTHETIC", false)
+	pollInterval := envDurationSeconds("FEST_POLL_INTERVAL_SECONDS", 10*time.Second)
+	planSource := "fest"
+	initialSource := "fest"
+	festSelector := os.Getenv("FEST_SELECTOR")
+
+	plan, selectedSelector, snapshot, err := festRuntime.LoadPlan(ctx)
+	if err != nil {
+		if !allowSynthetic {
+			log.Error("failed to load fest runtime plan", "error", err)
+			os.Exit(1)
+		}
+		planSource = "synthetic_fallback_static_plan"
+		initialSource = "synthetic"
+		plan = coordinator.IntegrationCyclePlan(inferenceAgentID, defiAgentID)
+		log.Warn("fest runtime unavailable, using static fallback plan", "error", err)
+	} else {
+		festSelector = selectedSelector
+		initialSource = snapshot.Source
+		log.Info("fest runtime plan loaded",
+			"selector", selectedSelector,
+			"progress_pct", snapshot.FestivalProgress.OverallCompletionPercent)
+	}
+
+	// Publish periodic festival progress updates for dashboard consumption.
+	progressPublisher := coordinator.NewFestProgressPublisher(
+		festRuntime,
+		publisher,
+		cfg.Coordinator.StatusTopicID,
+		pollInterval,
+		allowSynthetic,
+		log,
+	)
+	progressErrs := progressPublisher.Start(ctx)
+	go func() {
+		for err := range progressErrs {
+			log.Warn("festival progress publisher error", "error", err)
+		}
+	}()
+
 	log.Info("coordinator starting",
 		"version", "0.2.0",
 		"task_topic", cfg.Coordinator.TaskTopicID,
 		"status_topic", cfg.Coordinator.StatusTopicID,
+		"plan_source", planSource,
+		"initial_source", initialSource,
+		"fest_selector", festSelector,
+		"allow_synthetic", allowSynthetic,
+		"poll_interval_seconds", int(pollInterval.Seconds()),
 		"tasks", plan.TaskCount())
 
 	assignedIDs, err := assigner.AssignTasks(ctx, plan)
@@ -183,4 +246,39 @@ func daemonHeartbeatLoop(ctx context.Context, log *slog.Logger, client daemon.Da
 			}
 		}
 	}
+}
+
+func envBool(name string, defaultVal bool) bool {
+	v := strings.TrimSpace(os.Getenv(name))
+	if v == "" {
+		return defaultVal
+	}
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "y", "on":
+		return true
+	case "0", "false", "no", "n", "off":
+		return false
+	default:
+		return defaultVal
+	}
+}
+
+func envInt(name string, defaultVal int) int {
+	v := strings.TrimSpace(os.Getenv(name))
+	if v == "" {
+		return defaultVal
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return defaultVal
+	}
+	return n
+}
+
+func envDurationSeconds(name string, defaultVal time.Duration) time.Duration {
+	seconds := envInt(name, int(defaultVal.Seconds()))
+	if seconds <= 0 {
+		return defaultVal
+	}
+	return time.Duration(seconds) * time.Second
 }
