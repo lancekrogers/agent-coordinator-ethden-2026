@@ -1,0 +1,18 @@
+{
+  "active": {
+    "count": 1,
+    "festivals": [
+      {
+        "name": "fest-a",
+        "metadata_id": "FA0001",
+        "metadata_name": "fest-a",
+        "status": "active",
+        "path": "festivals/active/fest-a"
+      }
+    ]
+  },
+  "ready": { "count": 0, "festivals": [] },
+  "planning": { "count": 0, "festivals": [] },
+  "dungeon/someday": { "count": 0, "festivals": [] },
+  "dungeon/completed": { "count": 1, "festivals": [{ "name": "fest-c", "status": "dungeon/completed" }] }
+}

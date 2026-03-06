@@ -1,0 +1,29 @@
+{
+  "active": { "count": 0, "festivals": [] },
+  "ready": {
+    "count": 1,
+    "festivals": [
+      {
+        "name": "fest-ready",
+        "metadata_id": "FR0001",
+        "metadata_name": "fest-ready",
+        "status": "ready",
+        "path": "festivals/ready/fest-ready"
+      }
+    ]
+  },
+  "planning": { "count": 0, "festivals": [] },
+  "dungeon/someday": { "count": 0, "festivals": [] },
+  "dungeon/completed": {
+    "count": 1,
+    "festivals": [
+      {
+        "name": "fest-completed",
+        "metadata_id": "FC0009",
+        "metadata_name": "fest-completed",
+        "status": "dungeon/completed",
+        "path": "festivals/dungeon/completed/fest-completed"
+      }
+    ]
+  }
+}

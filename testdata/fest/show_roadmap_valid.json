@@ -1,0 +1,56 @@
+{
+  "festival": {
+    "id": "fest-ready-FR0001",
+    "metadata_id": "FR0001",
+    "name": "fest-ready-FR0001",
+    "metadata_name": "fest-ready",
+    "status": "ready",
+    "path": "festivals/ready/fest-ready-FR0001",
+    "stats": { "progress": 42 }
+  },
+  "roadmap": {
+    "festival_path": "festivals/ready/fest-ready-FR0001",
+    "phases": [
+      {
+        "name": "001_IMPLEMENT",
+        "status": "in_progress",
+        "sequences": [
+          {
+            "name": "01_adapter",
+            "status": "in_progress",
+            "steps": [
+              {
+                "number": 1,
+                "type": "sequential",
+                "parallel": false,
+                "tasks": [
+                  {
+                    "id": "001_IMPLEMENT/01_adapter/01_wire.md",
+                    "name": "01_wire",
+                    "status": "completed",
+                    "is_gate": false,
+                    "dependencies": []
+                  },
+                  {
+                    "id": "001_IMPLEMENT/01_adapter/02_test.md",
+                    "name": "02_test",
+                    "status": "in_progress",
+                    "is_gate": false,
+                    "dependencies": ["01_wire"]
+                  },
+                  {
+                    "id": "001_IMPLEMENT/01_adapter/03_review.md",
+                    "name": "03_review",
+                    "status": "pending",
+                    "is_gate": true,
+                    "dependencies": ["02_test"]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
